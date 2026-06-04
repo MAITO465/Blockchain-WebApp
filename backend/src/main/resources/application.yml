@@ -1,0 +1,59 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: bitcoin-testnet-backend
+
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/bitcoin_testnet}
+      auto-index-creation: true
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+    consumer:
+      group-id: bitcoin-consumer-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.bitcoin.testnet.event"
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# Bitcoin / BitcoinJ configuration
+bitcoin:
+  wallet:
+    dir: ${BITCOIN_WALLET_DIR:./wallet}
+    name: ${BITCOIN_WALLET_NAME:testnet-wallet}
+
+# Kafka topic name
+kafka:
+  topics:
+    bitcoin-transactions: bitcoin-transactions
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.bitcoin.testnet: DEBUG
+    org.bitcoinj: WARN
+    org.springframework.kafka: INFO

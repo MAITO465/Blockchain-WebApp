@@ -1,0 +1,96 @@
+services:
+
+  mongodb:
+    image: mongo:7.0
+    container_name: bitcoin-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - bitcoin-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: bitcoin-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - bitcoin-network
+    # No health check — Confluent ZK image may not have nc/netcat.
+    # Kafka and backend handle connection retries gracefully.
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: bitcoin-kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # Deux listeners : INTERNAL pour Docker, EXTERNAL pour accès localhost
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    networks:
+      - bitcoin-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bitcoin-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/bitcoin_testnet
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      BITCOIN_WALLET_DIR: /app/wallet
+      BITCOIN_WALLET_NAME: testnet-wallet
+      SERVER_PORT: 8080
+    volumes:
+      - bitcoin-wallet:/app/wallet
+    networks:
+      - bitcoin-network
+    restart: on-failure
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bitcoin-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    networks:
+      - bitcoin-network
+
+volumes:
+  mongodb-data:
+    driver: local
+  bitcoin-wallet:
+    driver: local
+
+networks:
+  bitcoin-network:
+    driver: bridge
