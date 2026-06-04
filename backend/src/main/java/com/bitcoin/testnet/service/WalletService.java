@@ -7,6 +7,8 @@ import com.bitcoin.testnet.repository.WalletAddressRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
+import com.bitcoin.testnet.document.User;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -26,10 +28,15 @@ public class WalletService {
         this.walletAddressRepository = walletAddressRepository;
     }
 
+    private User getCurrentUser() {
+        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    }
+
     /**
      * Génère une nouvelle adresse de réception, la persiste en MongoDB et la retourne.
      */
     public AddressResponse generateAddress() {
+        User user = getCurrentUser();
         Address address = bitcoinService.generateFreshAddress();
         String addressStr = address.toString();
 
@@ -41,6 +48,7 @@ public class WalletService {
         } else {
             walletAddress = WalletAddress.builder()
                     .address(addressStr)
+                    .userId(user.getId())
                     .network("TESTNET3")
                     .createdAt(LocalDateTime.now())
                     .build();
@@ -72,10 +80,11 @@ public class WalletService {
     }
 
     /**
-     * Liste toutes les adresses générées et persistées dans MongoDB.
+     * Liste toutes les adresses générées et persistées dans MongoDB pour l'utilisateur actuel.
      */
     public List<AddressResponse> listAddresses() {
-        return walletAddressRepository.findAll()
+        User user = getCurrentUser();
+        return walletAddressRepository.findByUserId(user.getId())
                 .stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());

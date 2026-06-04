@@ -6,8 +6,11 @@ import com.bitcoin.testnet.dto.response.SignatureResponse;
 import com.bitcoin.testnet.dto.response.VerifyResponse;
 import com.bitcoin.testnet.service.BitcoinService;
 import jakarta.validation.Valid;
+import com.bitcoin.testnet.document.User;
+import com.bitcoin.testnet.repository.WalletAddressRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,15 +19,28 @@ import org.springframework.web.bind.annotation.*;
 public class MessageController {
 
     private final BitcoinService bitcoinService;
+    private final WalletAddressRepository walletAddressRepository;
 
-    public MessageController(BitcoinService bitcoinService) {
+    public MessageController(BitcoinService bitcoinService, WalletAddressRepository walletAddressRepository) {
         this.bitcoinService = bitcoinService;
+        this.walletAddressRepository = walletAddressRepository;
+    }
+
+    private User getCurrentUser() {
+        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
     /** Signe un message avec la clé privée associée à une adresse du portefeuille */
     @PostMapping("/sign")
     public ResponseEntity<SignatureResponse> signMessage(
             @Valid @RequestBody SignMessageRequest request) {
+        
+        User user = getCurrentUser();
+        boolean ownsAddress = walletAddressRepository.findByUserIdAndAddress(user.getId(), request.getAddress()).isPresent();
+        if (!ownsAddress) {
+            return ResponseEntity.status(403).build();
+        }
+
         log.info("Signature de message pour l'adresse: {}", request.getAddress());
         String signature = bitcoinService.signMessage(request.getAddress(), request.getMessage());
         return ResponseEntity.ok(SignatureResponse.builder()

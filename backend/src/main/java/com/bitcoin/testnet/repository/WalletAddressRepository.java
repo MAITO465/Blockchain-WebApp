@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface WalletAddressRepository extends MongoRepository<WalletAddress, String> {
     Optional<WalletAddress> findByAddress(String address);
     boolean existsByAddress(String address);
+    java.util.List<WalletAddress> findByUserId(String userId);
+    Optional<WalletAddress> findByUserIdAndAddress(String userId, String address);
 }

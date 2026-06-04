@@ -1,10 +1,12 @@
-import { Component } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, OnInit } from '@angular/core';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule],
   template: `
     <div class="app-layout">
       <nav class="sidebar">
@@ -15,7 +17,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
             <div class="logo-subtitle">TestNet3 Client</div>
           </div>
         </div>
-        <ul class="nav-links">
+        <ul class="nav-links" *ngIf="isAuthenticated">
           <li>
             <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
               <span class="nav-icon">⊞</span> Dashboard
@@ -42,7 +44,23 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
             </a>
           </li>
         </ul>
+        <ul class="nav-links" *ngIf="!isAuthenticated">
+          <li>
+            <a routerLink="/login" routerLinkActive="active">
+              <span class="nav-icon">🔑</span> Connexion
+            </a>
+          </li>
+          <li>
+            <a routerLink="/register" routerLinkActive="active">
+              <span class="nav-icon">📝</span> Inscription
+            </a>
+          </li>
+        </ul>
         <div class="sidebar-footer">
+          <div class="user-info" *ngIf="isAuthenticated">
+            <span class="username">👤 {{ username }}</span>
+            <button class="logout-btn" (click)="logout()">Déconnexion</button>
+          </div>
           <span class="network-badge">TestNet3</span>
         </div>
       </nav>
@@ -137,6 +155,48 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
       min-height: 100vh;
       background: #0f1117;
     }
+    .user-info {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #2d3748;
+    }
+    .username {
+      color: #e2e8f0;
+      font-size: 13px;
+    }
+    .logout-btn {
+      background: transparent;
+      border: 1px solid #e53e3e;
+      color: #e53e3e;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .logout-btn:hover {
+      background: #e53e3e;
+      color: white;
+    }
   `]
 })
-export class AppComponent {}
+export class AppComponent implements OnInit {
+  isAuthenticated = false;
+  username: string | null = null;
+
+  constructor(private authService: AuthService, private router: Router) {}
+
+  ngOnInit() {
+    this.authService.currentUser$.subscribe(user => {
+      this.username = user;
+      this.isAuthenticated = !!user;
+    });
+  }
+
+  logout() {
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
+}

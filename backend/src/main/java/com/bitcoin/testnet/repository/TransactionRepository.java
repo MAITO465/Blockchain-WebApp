@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface TransactionRepository extends MongoRepository<TransactionDocument, String> {
     Optional<TransactionDocument> findByTxHash(String txHash);
     boolean existsByTxHash(String txHash);
+    java.util.List<TransactionDocument> findByUserId(String userId);
 }

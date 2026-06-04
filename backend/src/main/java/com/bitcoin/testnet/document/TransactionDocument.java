@@ -23,6 +23,9 @@ public class TransactionDocument {
 
     private String eventId;
 
+    @Indexed
+    private String userId;
+
     @Indexed(unique = true)
     private String txHash;
 

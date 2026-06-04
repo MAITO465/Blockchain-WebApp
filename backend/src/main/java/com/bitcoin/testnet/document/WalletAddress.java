@@ -24,6 +24,9 @@ public class WalletAddress {
     @Indexed(unique = true)
     private String address;
 
+    @Indexed
+    private String userId;
+
     private String network;
 
     @CreatedDate

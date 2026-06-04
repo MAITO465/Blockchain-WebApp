@@ -11,6 +11,7 @@ import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.wallet.Wallet;
+import org.bitcoinj.wallet.SendRequest;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Service;
@@ -204,9 +205,10 @@ public class BitcoinService implements InitializingBean, DisposableBean {
      *
      * @param toAddress adresse destination TestNet3
      * @param satoshis  montant en satoshis
+     * @param allowedAddresses liste des adresses autorisées pour cet utilisateur
      * @return hash de la transaction diffusée
      */
-    public String sendTransaction(String toAddress, long satoshis) {
+    public String sendTransaction(String toAddress, long satoshis, List<String> allowedAddresses) {
         checkReady();
 
         // Validation de l'adresse Bitcoin
@@ -223,14 +225,41 @@ public class BitcoinService implements InitializingBean, DisposableBean {
 
         try {
             /*
-             * sendCoins() :
-             * 1. Sélectionne les UTXOs disponibles (coin selection)
-             * 2. Crée et signe la transaction avec les clés du portefeuille
-             * 3. Diffuse la transaction aux peers connectés
-             * Lève InsufficientMoneyException si le solde est insuffisant.
+             * sendCoins() avec CoinSelector personnalisé :
+             * Force la sélection des UTXOs appartenant uniquement aux adresses
+             * possédées par l'utilisateur (isolation stricte des fonds).
              */
+            SendRequest req = SendRequest.to(destination, amount);
+            req.coinSelector = new org.bitcoinj.wallet.CoinSelector() {
+                @Override
+                public org.bitcoinj.wallet.CoinSelection select(Coin target, List<TransactionOutput> candidates) {
+                    List<TransactionOutput> allowedOutputs = new java.util.ArrayList<>();
+                    long total = 0;
+                    for (TransactionOutput output : candidates) {
+                        try {
+                            Address outputAddress = output.getScriptPubKey().getToAddress(params);
+                            if (allowedAddresses.contains(outputAddress.toString())) {
+                                allowedOutputs.add(output);
+                                total += output.getValue().getValue();
+                            }
+                        } catch (Exception e) {
+                            // Ignorer les outputs non standards
+                        }
+                        if (total >= target.getValue()) {
+                            break;
+                        }
+                    }
+                    if (total < target.getValue()) {
+                        return new org.bitcoinj.wallet.CoinSelection(Coin.valueOf(total), allowedOutputs);
+                    }
+                    // Trier par montant (plus grand d'abord) pour minimiser les inputs
+                    allowedOutputs.sort((a, b) -> b.getValue().compareTo(a.getValue()));
+                    return new org.bitcoinj.wallet.CoinSelection(Coin.valueOf(total), allowedOutputs);
+                }
+            };
+            
             Wallet.SendResult result = kit.wallet().sendCoins(
-                    kit.peerGroup(), destination, amount);
+                    kit.peerGroup(), req);
 
             // Attendre la confirmation de réception par les peers (30 secondes max)
             result.broadcastComplete.get(30, TimeUnit.SECONDS);
