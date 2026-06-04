@@ -1,7 +1,9 @@
 package com.bitcoin.testnet.controller;
 
+import com.bitcoin.testnet.dto.response.AddressBalanceResponse;
 import com.bitcoin.testnet.dto.response.AddressResponse;
 import com.bitcoin.testnet.dto.response.BalanceResponse;
+import com.bitcoin.testnet.service.BlockExplorerService;
 import com.bitcoin.testnet.service.WalletService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -15,9 +17,11 @@ import java.util.List;
 public class WalletController {
 
     private final WalletService walletService;
+    private final BlockExplorerService blockExplorerService;
 
-    public WalletController(WalletService walletService) {
+    public WalletController(WalletService walletService, BlockExplorerService blockExplorerService) {
         this.walletService = walletService;
+        this.blockExplorerService = blockExplorerService;
     }
 
     /** Génère une nouvelle adresse de réception TestNet3 */
@@ -36,5 +40,11 @@ public class WalletController {
     @GetMapping("/addresses")
     public ResponseEntity<List<AddressResponse>> listAddresses() {
         return ResponseEntity.ok(walletService.listAddresses());
+    }
+
+    /** Retourne le solde d'une adresse spécifique via Blockstream */
+    @GetMapping("/address/{address}/balance")
+    public ResponseEntity<AddressBalanceResponse> getAddressBalance(@PathVariable String address) {
+        return ResponseEntity.ok(blockExplorerService.getAddressBalance(address));
     }
 }

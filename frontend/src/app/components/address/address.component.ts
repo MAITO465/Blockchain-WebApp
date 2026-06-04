@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WalletService } from '../../services/wallet.service';
-import { AddressResponse } from '../../models/models';
+import { AddressBalanceResponse, AddressResponse } from '../../models/models';
 
 @Component({
   selector: 'app-address',
@@ -49,6 +49,7 @@ import { AddressResponse } from '../../models/models';
               <th>Address</th>
               <th>Network</th>
               <th>Created</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -56,9 +57,27 @@ import { AddressResponse } from '../../models/models';
               <td><span class="mono addr-cell">{{ addr.address }}</span></td>
               <td><span class="badge badge-success">{{ addr.network }}</span></td>
               <td>{{ addr.createdAt | date:'short' }}</td>
+              <td>
+                <button class="btn-secondary btn-sm" (click)="checkBalance(addr.address)">
+                  Check Balance
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
+
+        <!-- Specific Address Balance Result -->
+        <div *ngIf="selectedBalance" class="result-box" style="margin-top:24px; padding-top:16px; border-top:1px solid #2d3748;">
+          <h3>Balance for {{ selectedBalance.address | slice:0:10 }}...</h3>
+          <div style="font-size: 24px; color: #f7931a; margin: 8px 0;">
+            {{ selectedBalance.friendlyTotal }}
+          </div>
+          <div style="color: #a0aec0; font-size: 13px;">
+            Confirmed: {{ selectedBalance.confirmedSatoshis }} sat <br/>
+            Unconfirmed: {{ selectedBalance.unconfirmedSatoshis }} sat
+          </div>
+        </div>
+        <div *ngIf="balanceError" class="error-msg" style="margin-top:16px">{{ balanceError }}</div>
       </div>
     </div>
   `,
@@ -85,6 +104,10 @@ import { AddressResponse } from '../../models/models';
     .addr-cell {
       font-size: 12px;
     }
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 12px;
+    }
   `]
 })
 export class AddressComponent implements OnInit {
@@ -93,6 +116,9 @@ export class AddressComponent implements OnInit {
   loading = false;
   generating = false;
   generateError = '';
+
+  selectedBalance: AddressBalanceResponse | null = null;
+  balanceError = '';
 
   constructor(private walletService: WalletService) {}
 
@@ -122,6 +148,15 @@ export class AddressComponent implements OnInit {
         this.generateError = e.error?.message || 'Failed to generate address';
         this.generating = false;
       }
+    });
+  }
+
+  checkBalance(address: string): void {
+    this.selectedBalance = null;
+    this.balanceError = '';
+    this.walletService.getAddressBalance(address).subscribe({
+      next: (b) => { this.selectedBalance = b; },
+      error: (e) => { this.balanceError = e.error?.message || 'Failed to load address balance'; }
     });
   }
 }

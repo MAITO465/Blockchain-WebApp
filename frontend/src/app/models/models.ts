@@ -13,6 +13,14 @@ export interface BalanceResponse {
   bestChainHeight: number;
 }
 
+export interface AddressBalanceResponse {
+  address: string;
+  confirmedSatoshis: number;
+  unconfirmedSatoshis: number;
+  totalSatoshis: number;
+  friendlyTotal: string;
+}
+
 export interface TransactionResponse {
   id: string;
   eventId: string;

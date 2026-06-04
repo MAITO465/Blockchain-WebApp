@@ -13,6 +13,7 @@ Fully dockerized — runs with a single command.
 | HD Wallet | Creates/loads a BitcoinJ SPV wallet on TestNet3 |
 | Generate Addresses | Fresh P2PKH receiving addresses (BIP44 HD derivation) |
 | Wallet Balance | Total balance with sync status |
+| Address Balance | Check balance of any specific address via Blockstream API |
 | Send Transactions | Broadcast transactions to TestNet3 network |
 | Kafka Events | Every broadcast publishes a Kafka event |
 | MongoDB Persistence | Kafka consumer persists transactions and addresses |
@@ -160,7 +161,8 @@ The first sync downloads all TestNet3 headers — this can take 5–20 minutes d
 
 ### 4. Check balance
 
-Go to **Balance**. Your TestNet BTC will appear after at least 1 confirmation (~10 min).
+Go to **Balance** to see the total wallet balance. Your TestNet BTC will appear after at least 1 confirmation (~10 min).
+Alternatively, go to **Addresses** and click **Check Balance** next to any generated address to see its specific confirmed/unconfirmed balance via the Blockstream API.
 
 ### 5. Send a transaction
 
@@ -187,9 +189,14 @@ In the same page, enter the address, message, and signature. Click **Verify Sign
 curl -X POST http://localhost:8080/api/wallet/address
 ```
 
-### Get balance
+### Get total balance
 ```bash
 curl http://localhost:8080/api/wallet/balance
+```
+
+### Get specific address balance
+```bash
+curl http://localhost:8080/api/wallet/address/mXXX.../balance
 ```
 
 ### List addresses
@@ -340,7 +347,6 @@ sudo lsof -i :8080
 
 | Limitation | Reason |
 |---|---|
-| Per-address balance not available | SPV mode only tracks wallet-level UTXOs, not individual address balances. A block explorer API would be needed. |
 | First sync is slow | TestNet3 has millions of block headers. Checkpoints could speed this up. |
 | Message signing only with P2PKH | The standard Bitcoin message signing protocol is defined for legacy (P2PKH) addresses only. |
 | Single-node Kafka | replication-factor=1. Not fault-tolerant. Suitable for development only. |
@@ -351,7 +357,6 @@ sudo lsof -i :8080
 
 ## Possible Future Improvements
 
-- Add block explorer integration for per-address balance
 - Add BIP39 mnemonic display/import for wallet recovery
 - Add wallet backup/export endpoint
 - Add JWT authentication on backend
