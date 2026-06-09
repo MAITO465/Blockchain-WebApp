@@ -41,7 +41,11 @@ bitcoin:
 kafka:
   topics:
     bitcoin-transactions: bitcoin-transactions
-
+    
+# JWT configuration
+jwt:
+  secret: ${JWT_SECRET}
+  
 # Actuator
 management:
   endpoints:
