@@ -67,6 +67,7 @@ services:
       BITCOIN_WALLET_DIR: /app/wallet
       BITCOIN_WALLET_NAME: testnet-wallet
       SERVER_PORT: 8080
+      JWT_SECRET: ${JWT_SECRET}
     volumes:
       - bitcoin-wallet:/app/wallet
     networks:
